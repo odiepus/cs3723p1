@@ -1,0 +1,137 @@
+ALLOC C111 Customer 111,Sal A Mander,NULL,NULL,100.00
+PRTNODE C111
+ALLOC C222 Customer 222,Barb Wire,NULL,NULL,200.00
+ALLOC PPF001 LineItem PPF001,5,9.95,NULL
+PRTALL
+*
+* associate customer 111 with a next pointing to 222
+*
+ASSOC C111 pNextCust C222
+* customer 111's  pNextCust should point to 222
+PRTNODE C111
+*
+* associate customer 111 to PPF001
+*
+ASSOC C111 pFirstItem PPF001
+PRTNODE C111
+* associate customer 222 to 333
+ALLOC C333 Customer 333,Misty Wind,NULL,NULL,70.00
+ASSOC C222 pNextCust C333
+*
+* 111 should point to 222 which points to 333
+* 111 should also point to PPF001
+*
+PRTALL
+* add another customer
+ALLOC C444 Customer 444,Emory Board,NULL,NULL,44.44
+ASSOC C333 pNextCust C444
+DUMP
+*
+* Allocate another node and associate it with 222
+* Allocate another line item and associate 555 to it
+*
+ALLOC C555 Customer 555,Holly Graph,NULL,NULL,55.00
+ASSOC C555 pNextCust C222
+ALLOC SBB001 LineItem SBB001,2,19.95,NULL
+ASSOC C555 pFirstItem SBB001
+*
+* assoc the line items
+*
+ALLOC BOM001 LineItem BOM001,1,29.95,NULL
+ASSOC SBB001 pNextItem BOM001
+*
+ALLOC C666 Customer 666,Bob L Head,NULL,NULL,66.00
+ASSOC C444 pNextCust C666
+*
+* Assoc C444 with a different customer,
+* causing the old customer assoc (C666) to not be associated
+*
+ALLOC C777 Customer 777,Flo N Water,NULL,NULL,77.00
+ASSOC C444 pNextCust C777
+*
+* Add many customers and line items
+*
+ALLOC C888 Customer 888,Joe King,NULL,NULL,88.00
+ALLOC C911 Customer 911,Lee King,NULL,NULL,91.00
+ALLOC C922 Customer 922,Mae King,NULL,NULL,92.00
+ALLOC MCW001 LineItem MCW001,1,12.45,NULL
+ALLOC C933 Customer 933,Ray King,NULL,NULL,93.00
+ALLOC C944 Customer 944,Freida King,NULL,NULL,94.00
+ALLOC SSX001 LineItem SSX001,1,29.95,NULL
+ASSOC MCW001 pNextItem SSX001
+ALLOC TTP001 LineItem TTP001,2,9.95,NULL
+DEREF SSX001
+DUMP
+*
+* XXXXXX 1
+* This line item is smaller than the last free node;
+* however, the remaining free size is too small for a
+* free node.  We give NHC001 all of the free node's
+* size as its size.
+ALLOC NHC001 LineItem NHC001,1,9.95,NULL
+PRTALL
+*
+* XXXXXX 2
+* Do a Garbage Collection ... should not collect anything
+* Note that SSX001 is still referenced by a linked list
+* so it shouldn't be freed.
+*
+DUMP
+GCOLL
+DUMP
+*
+* Remove our reference to the beginning of the linked list
+*
+DEREF MCW001
+*
+* XXXXXX 3
+* Do a Garbage Collection which will gain two free areas
+*
+GCOLL
+DUMP
+*
+* Remove some Hash Table references ... but some of these
+* will still be referenced by user pointers
+*
+DEREF C888
+DEREF C911
+DEREF C333
+DEREF C444
+DEREF C666
+*
+* XXXXXX 4
+* Do a Garbage Collection which should find C666 to collect
+*
+GCOLL
+DUMP
+*
+* Create a circular list, should not cause problems for GCOLL
+*
+ASSOC C777 pNextCust C222
+DEREF C777
+DEREF C222
+*
+* Do a Garbage Collection which shouldn't change anything
+* but should verify that student's code doesn't infinite loop
+*
+GCOLL
+DUMP
+*
+ALLOC C955 Customer 955,Harry King,NULL,NULL,95.00
+ALLOC SSX002 LineItem SSX002,1,29.25,NULL
+ALLOC SSX003 LineItem SSX003,1,29.35,NULL
+ALLOC SSX004 LineItem SSX004,1,29.45,NULL
+*
+* XXXXXX 5
+DUMP
+*
+DEREF C933
+DEREF C944
+DEREF SSX003
+*
+* XXXXXX 6
+* 32-bit: Collection should have one existing and gather three adj
+* 64-bit: Collection should have two existing and gather three adj
+*
+GCOLL
+DUMP
