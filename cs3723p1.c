@@ -63,6 +63,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 
 			    newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
 			    newNode->shNodeType = shNodeType;
+                newNode->cGC = 'U';
 			    memcpy(newNode->sbData, sbData, sizeof(sbData));//check syntax on this
 			}
 		    }
