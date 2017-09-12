@@ -56,7 +56,8 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 			//and InUseNode to new carved out space
 			if(diff >= minNodeSize){
 			    newNode = (InUseNode*)tempHead;
-			    tempHead = tempHead + wantSize;
+			    tempHead = tempHead + wantSize + 1;//should add 1 to start this node  otherwise I am adding to
+                //end of last node
 			    tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext;
 			    pMgr->pFreeHead = tempHead;
 
