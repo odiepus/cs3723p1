@@ -38,20 +38,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
         //and InUseNode to new carved out space
         if(diff >= minNodeSize){
             int newFreeNodeSize = diff;                     //this is used to set the size of the new freenode
-            newNode = (InUseNode*)tempHead;                 //point newNode to the top of freenode pointer we are pointing at currently
-            tempHead = (FreeNode*) tempHead + wantSize + 1; //point tempHead to the top of leftover of freenode
-            tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
-
-            //setup metadata for new freenode
-            tempHead->shNodeSize = newFreeNodeSize;
-            tempHead->cGC = 'F';
-            pMgr->pFreeHead = tempHead;                     //point StorageManager object freenode head to the new freenode
-
-            //setup metadata for new node
-            newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
-            newNode->shNodeType = shNodeType;
-            newNode->cGC = 'U';
-            memcpy(newNode->sbData, sbData, sizeof(sbData));//check syntax on this
+            addNewNodeAndFreeNode(pMgr, tempHead, newNode, wantSize, newFreeNodeSize, shDataSize, shNodeType,  sbData);
         }
         else{
             //point freenode head to the next node in freenode list
@@ -88,6 +75,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
                         newNode = (InUseNode*)tempHead;
                         tempHead = (FreeNode*) tempHead + wantSize + 1;
                         tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext;
+
                         tempHead->shNodeSize = newFreeNodeSize;
                         tempHead->cGC = 'F';
                         pMgr->pFreeHead = tempHead;
@@ -128,13 +116,16 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 void *addNewNodeAndFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
         int wantSize, int newFreeNodeSize, short shDataSize, short shNodeType,
         char sbData[]){
-    newNode = (InUseNode*)tempHead;
-    tempHead = (FreeNode*) tempHead + wantSize + 1;
-    tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext;
+    newNode = (InUseNode*)tempHead;                 //point newNode to the top of freenode pointer we are pointing at currently
+    tempHead = (FreeNode*) tempHead + wantSize + 1; //point tempHead to the top of leftover of freenode
+    tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
+
+    //setup metadata for new freenode
     tempHead->shNodeSize = newFreeNodeSize;
     tempHead->cGC = 'F';
-    pMgr->pFreeHead = tempHead;
+    pMgr->pFreeHead = tempHead;                     //point StorageManager object freenode head to the new freenode
 
+    //setup metadata for new node
     newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
     newNode->shNodeType = shNodeType;
     newNode->cGC = 'U';
