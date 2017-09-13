@@ -30,52 +30,93 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 
     //if there is only one node or head node is large enuff
     if(tempHead->shNodeSize > wantSize){
-	//get diff from sizewanted and see if larger than minNodeSize
+
+        //get diff from sizewanted and see if larger than minNodeSize
         int diff = tempHead->shNodeSize - wantSize;
 
         //if diff is larger than minNodeSize then carve out the freenode and assign freenode head to it
         //and InUseNode to new carved out space
         if(diff >= minNodeSize){
-            int newFreeNodeSize = diff;
-            newNode = (InUseNode*)tempHead;
-            tempHead = (FreeNode*) tempHead + wantSize + 1;
-            tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext;
+            int newFreeNodeSize = diff;                     //this is used to set the size of the new freenode
+            newNode = (InUseNode*)tempHead;                 //point newNode to the top of freenode pointer we are pointing at currently
+            tempHead = (FreeNode*) tempHead + wantSize + 1; //point tempHead to the top of leftover of freenode
+            tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
+
+            //setup metadata for new freenode
             tempHead->shNodeSize = newFreeNodeSize;
             tempHead->cGC = 'F';
-            pMgr->pFreeHead = tempHead;
+            pMgr->pFreeHead = tempHead;                     //point StorageManager object freenode head to the new freenode
 
+            //setup metadata for new node
             newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
             newNode->shNodeType = shNodeType;
             newNode->cGC = 'U';
             memcpy(newNode->sbData, sbData, sizeof(sbData));//check syntax on this
         }
-    }
-    else if(tempHead->shNodeSize < wantSize){
-	while(tempHead != NULL){
-	    tempHead = tempHead->pFreeNext;
-	    if(tempHead != NULL){
-		    if(tempHead->shNodeSize > wantSize){
-                //get diff from sizewanted and see if larger than minNodeSize
-                int diff = tempHead->shNodeSize - wantSize;
-                int newFreeNodeSize = diff;
-                if(diff >= minNodeSize){
-                    int newFreeNodeSize = diff;
-                    newNode = (InUseNode*)tempHead;
-                    tempHead = (FreeNode*) tempHead + wantSize + 1;
-                    tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext;
-                    tempHead->shNodeSize = newFreeNodeSize;
-                    tempHead->cGC = 'F';
-                    pMgr->pFreeHead = tempHead;
+        else{
+            //point freenode head to the next node in freenode list
+            pMgr->pFreeHead = tempHead->pFreeNext;
 
-                    newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
-                    newNode->shNodeType = shNodeType;
-                    newNode->cGC = 'U';
-                    memcpy(newNode->sbData, sbData, sizeof(sbData));//check syntax on this
-                    //addNewNodeAndFreeNode(pMgr, tempHead, newNode, wantSize, newFreeNodeSize, shDataSize, shNodeType,  sbData);
+            //setup metadata for new node
+            newNode = (InUseNode*)tempHead;
+            newNode->cGC = 'U';
+            newNode->shNodeType = shNodeType;
+            newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
+            memcpy(newNode->sbData, sbData, sizeof(sbData));
+        }
+    }
+    //if head node size is less then traverse the linked list of freenodes and
+    //find one that fits
+    else if(tempHead->shNodeSize < wantSize){
+        //check if node is NULL
+        while(tempHead != NULL){
+            //point to next node cuz last one didnt make the cut
+            tempHead = tempHead->pFreeNext;
+            //if the newly pointed at node is not null then check its size
+            if(tempHead != NULL){
+                if(tempHead->shNodeSize > wantSize){
+                    //get diff from sizewanted and see if larger than minNodeSize
+                    int diff = tempHead->shNodeSize - wantSize;
+                    //this'll be the size of the newly created freenode if the left
+                    //over is large enuff for a free node
+                    int newFreeNodeSize = diff;
+
+                    //if the leftover is larger enuff for a free node then create
+                    //a new freenode and InUseNode
+                    if(diff >= minNodeSize){
+                        int newFreeNodeSize = diff;
+                        newNode = (InUseNode*)tempHead;
+                        tempHead = (FreeNode*) tempHead + wantSize + 1;
+                        tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext;
+                        tempHead->shNodeSize = newFreeNodeSize;
+                        tempHead->cGC = 'F';
+                        pMgr->pFreeHead = tempHead;
+
+                        newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
+                        newNode->shNodeType = shNodeType;
+                        newNode->cGC = 'U';
+                        memcpy(newNode->sbData, sbData, sizeof(sbData));//check syntax on this
+                        //addNewNodeAndFreeNode(pMgr, tempHead, newNode, wantSize, newFreeNodeSize, shDataSize, shNodeType,  sbData);
+                    }
+                    else{
+                        //point freenode head to the next node in freenode list
+                        pMgr->pFreeHead = tempHead->pFreeNext;
+
+                        newNode = (InUseNode*)tempHead;
+                        newNode->cGC = 'U';
+                        newNode->shNodeType = shNodeType;
+                        newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
+                        memcpy(newNode->sbData, sbData, sizeof(sbData));
+
+                    }
                 }
-		    }
-	    }
-	}
+            }
+            //if the next node is null then we return the bad news via the pointer provided
+            if (tempHead == NULL) {
+                pmmResult->rc = RC_NOT_AVAIL;
+                strcpy(pmmResult->szErrorMessage, "FreeNode of specified size does not exist\n");
+            }
+        }
     }
     else if (tempHead == NULL) {
         pmmResult->rc = RC_NOT_AVAIL;
