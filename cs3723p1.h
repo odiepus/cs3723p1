@@ -137,6 +137,10 @@ void mmAssoc(StorageManager *pMgr
 void *addNewNodeAndFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
         int wantSize, int newFreeNodeSize, short shDataSize, short shNodeType,
          char sbData[]);
+void *justAddNewNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
+         int newFreeNodeSize, short shDataSize, short shNodeType,
+        char sbData[]);
+
 // Driver functions
 void smPrintMeta(StorageManager *pMgr);
 void smPrintFree(StorageManager *pMgr);
