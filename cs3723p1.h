@@ -134,12 +134,9 @@ void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult);
 void mmCollect(StorageManager *pMgr, MMResult *pmmResult);
 void mmAssoc(StorageManager *pMgr
     , void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult);
-void *addNewNodeAndFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
+void *addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
         int wantSize, int newFreeNodeSize, short shDataSize, short shNodeType,
          char sbData[]);
-void *justAddNewNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
-         int newFreeNodeSize, short shDataSize, short shNodeType,
-        char sbData[]);
 
 // Driver functions
 void smPrintMeta(StorageManager *pMgr);

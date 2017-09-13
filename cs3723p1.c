@@ -17,7 +17,6 @@ void mmInit(StorageManager *pMgr){
 
 }
 
-
 void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char sbData[], MMResult *pmmResult){
     //points to top of freenode list
     FreeNode *tempHead = pMgr->pFreeHead;
@@ -37,12 +36,10 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
         //if diff is larger than minNodeSize then carve out the freenode and assign freenode head to it
         //and InUseNode to new carved out space
         if(diff >= minNodeSize){
-            int newFreeNodeSize = diff;                     //this is used to set the size of the new freenode
-            addNewNodeAndFreeNode(pMgr, tempHead, newNode, wantSize, newFreeNodeSize, shDataSize, shNodeType,  sbData);
+            addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
         }
         else{
-            int newFreeNodeSize = diff;
-            justAddNewNode(pMgr, tempHead, newNode, newFreeNodeSize, shDataSize, shNodeType,  sbData);
+            addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
         }
     }
     //if head node size is less then traverse the linked list of freenodes and
@@ -64,12 +61,10 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
                     //if the leftover is larger enuff for a free node then create
                     //a new freenode and InUseNode
                     if(diff >= minNodeSize){
-                        int newFreeNodeSize = diff;
-                        addNewNodeAndFreeNode(pMgr, tempHead, newNode, wantSize, newFreeNodeSize, shDataSize, shNodeType,  sbData);
+                        addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
                     }
                     else{
-                        int newFreeNodeSize = diff;
-                        justAddNewNode(pMgr, tempHead, newNode, newFreeNodeSize, shDataSize, shNodeType,  sbData);
+                        addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
                     }
                 }
             }
@@ -87,17 +82,23 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 }
 
 
-void *addNewNodeAndFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
+void *addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
         int wantSize, int newFreeNodeSize, short shDataSize, short shNodeType,
         char sbData[]){
     newNode = (InUseNode*)tempHead;                 //point newNode to the top of freenode pointer we are pointing at currently
-    tempHead = (FreeNode*) tempHead + wantSize + 1; //point tempHead to the top of leftover of freenode
-    tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
 
-    //setup metadata for new freenode
-    tempHead->shNodeSize = newFreeNodeSize;
-    tempHead->cGC = 'F';
-    pMgr->pFreeHead = tempHead;                     //point StorageManager object freenode head to the new freenode
+    if(newFreeNodeSize >= pMgr->iMinimumNodeSize){
+        tempHead = (FreeNode*) tempHead + wantSize + 1; //point tempHead to the top of leftover of freenode
+        tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
+
+        //setup metadata for new freenode
+        tempHead->shNodeSize = newFreeNodeSize;
+        tempHead->cGC = 'F';
+        pMgr->pFreeHead = tempHead;                     //point StorageManager object freenode head to the new freenode
+    }
+    else{
+        pMgr->pFreeHead = tempHead->pFreeNext;
+    }
 
     //setup metadata for new node
     newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
@@ -106,18 +107,6 @@ void *addNewNodeAndFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode 
     memcpy(newNode->sbData, sbData, sizeof(sbData));//check syntax on this
 }
 
-void *justAddNewNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
-         int newFreeNodeSize, short shDataSize, short shNodeType,
-        char sbData[]){
-    //point freenode head to the next node in freenode list
-    pMgr->pFreeHead = tempHead->pFreeNext;
-
-    newNode = (InUseNode*)tempHead;
-    newNode->cGC = 'U';
-    newNode->shNodeType = shNodeType;
-    newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
-    memcpy(newNode->sbData, sbData, sizeof(sbData));
-}
 
 void mmMark(StorageManager *pMgr, MMResult *pmmResult){
 
@@ -132,4 +121,5 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
 }
 
 void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult){
+
 }
