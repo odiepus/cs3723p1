@@ -21,8 +21,6 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
     //points to top of freenode list
     FreeNode *tempHead = pMgr->pFreeHead;
 
-    //InUseNode pointer if we find a freenode of size we want
-    InUseNode *newNode;
 
     int wantSize = shDataSize + NODE_OVERHEAD_SZ;
     int minNodeSize = pMgr->iMinimumNodeSize;
@@ -30,6 +28,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
     //if there is only one node or head node is large enuff
     if(tempHead->shNodeSize > wantSize){
 
+        InUseNode *newNode = (InUseNode*)tempHead;
         //get diff from sizewanted and see if larger than minNodeSize
         int diff = tempHead->shNodeSize - wantSize;
 
@@ -54,9 +53,6 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
                 if(tempHead->shNodeSize > wantSize){
                     //get diff from sizewanted and see if larger than minNodeSize
                     int diff = tempHead->shNodeSize - wantSize;
-                    //this'll be the size of the newly created freenode if the left
-                    //over is large enuff for a free node
-                    int newFreeNodeSize = diff;
 
                     //if the leftover is larger enuff for a free node then create
                     //a new freenode and InUseNode
@@ -80,7 +76,6 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
         strcpy(pmmResult->szErrorMessage, "FreeNode of specified size does not exist\n");
     }
 }
-
 
 void *addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
         int wantSize, int newFreeNodeSize, short shDataSize, short shNodeType,
@@ -121,5 +116,9 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
 }
 
 void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult){
-
+    int i = 0;
+    for(; i < MAX_NODE_TYPE; i++){
+//        the attribute Name I am lookig for is in the nodes sbdata
+    }
+    printf("hello\n");
 }
