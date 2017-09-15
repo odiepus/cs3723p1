@@ -116,6 +116,7 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
 }
 
 void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult){
+    // need to look in the userdatafrom's sbdata list to find what I am lookin for and have it point to the userdatato. Hint gives offset to use I think
     int i = 0;
     for(; i < MAX_NODE_TYPE; i++){
 //        the attribute Name I am lookig for is in the nodes sbdata
