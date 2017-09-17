@@ -130,20 +130,28 @@ void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void 
     //if the attrName is not a pointer then say so
     //else cheange the pointer to point to the next user data or NULL.
     //detail sheet has the code to make fromUserData point to toUserData
-
-
-
+    void **ppNode;
+    InUseNode *pUserNodeFrom;
     while(TRUE){
         for(int i = 0; i < 10; i++){
             if(strcmp(pMgr->metaAttrM[i].szAttrName, szAttrName) == 0){
                 MetaAttr *pAttr = &(pMgr->metaAttrM[i]);
                 if(pAttr->cDataType == 'P'){
+                    pUserNodeFrom = (InUseNode*)((char*)pUserDataFrom - NODE_OVERHEAD_SZ);
+                    ppNode = (void**)&(pUserNodeFrom->sbData[pAttr->shOffset]);
+                    *ppNode = pUserDataTo;
+
                     printf("herer I match\n");
                 }
+                else{
+                    pmmResult->rc = RC_ASSOC_ATTR_NOT_PTR;
+                    pmmResult->szErrorMessage = "Atttribute not a pointer.";
+                }
+            }
+            else{
+                pmmResult->rc = RC_ASSOC_ATTR_NOT_FOUND;
+                pmmResult->szErrorMessage = "Atttribute not found.";
             }
         }
     }
-
-
-    printf("hello\n");
 }
