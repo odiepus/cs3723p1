@@ -7,28 +7,30 @@
 void mmInit(StorageManager *pMgr){
     pMgr->pFreeHead = (FreeNode*) pMgr->pBeginStorage;
 
-    char *temp = pMgr->pBeginStorage;
-    char *tempEnd =  pMgr->pEndStorage;
-    for(; *temp <= *tempEnd; *temp++){
-        *temp = 0;
-    }
+    memset(pMgr->pFreeHead, '\0',pMgr->iHeapSize);
     pMgr->pFreeHead->cGC = 'F';
     pMgr->pFreeHead->shNodeSize = pMgr->iHeapSize;
+    pMgr->pFreeHead->pFreeNext = NULL;
 
 }
 
 void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char sbData[], MMResult *pmmResult){
     //points to top of freenode list
     FreeNode *tempHead = pMgr->pFreeHead;
+    InUseNode *newNode = (InUseNode*)tempHead;                 //point newNode to the top of freenode pointer we are pointing at currently
 
 
-    int wantSize = shDataSize + NODE_OVERHEAD_SZ;
-    int minNodeSize = pMgr->iMinimumNodeSize;
+    short wantSize = shDataSize + NODE_OVERHEAD_SZ;
+    short minNodeSize = pMgr->iMinimumNodeSize;
+
+    if(tempHead == NULL){
+                pmmResult->rc = RC_NOT_AVAIL;
+                strcpy(pmmResult->szErrorMessage, "There are no FreeNode's available\n");
+    }
 
     //if there is only one node or head node is large enuff
-    if(tempHead->shNodeSize > wantSize){
+    else if(tempHead->shNodeSize > wantSize){
 
-        InUseNode *newNode = (InUseNode*)tempHead;
         //get diff from sizewanted and see if larger than minNodeSize
         int diff = tempHead->shNodeSize - wantSize;
 
@@ -77,21 +79,26 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
     }
 }
 
-void *addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
-        int wantSize, int newFreeNodeSize, short shDataSize, short shNodeType,
+void addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
+        short wantSize, short newFreeNodeSize, short shDataSize, short shNodeType,
         char sbData[]){
-    newNode = (InUseNode*)tempHead;                 //point newNode to the top of freenode pointer we are pointing at currently
 
     if(newFreeNodeSize >= pMgr->iMinimumNodeSize){
-        tempHead = (FreeNode*) tempHead + wantSize + 1; //point tempHead to the top of leftover of freenode
-        tempHead->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
-
-        //setup metadata for new freenode
-        tempHead->shNodeSize = newFreeNodeSize;
-        tempHead->cGC = 'F';
-        pMgr->pFreeHead = tempHead;                     //point StorageManager object freenode head to the new freenode
+        void *endtemp = (void*) ((char*)tempHead + wantSize); //point tempHead to the top of leftover of freenode
+        void *endHeap = (void*)pMgr->pEndStorage;
+        if(endtemp > endHeap){
+            pMgr->pFreeHead = NULL;
+        }
+        else{
+            FreeNode *temp = (FreeNode*)((char*)tempHead + wantSize);
+            temp->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
+            //setup metadata for new freenode
+            temp->shNodeSize = newFreeNodeSize;
+            temp->cGC = 'F';
+            pMgr->pFreeHead = temp;                     //point StorageManager object freenode head to the new freenode
+        }
     }
-    else{
+    else if(tempHead->pFreeNext != NULL){
         pMgr->pFreeHead = tempHead->pFreeNext;
     }
 
@@ -99,7 +106,7 @@ void *addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNod
     newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
     newNode->shNodeType = shNodeType;
     newNode->cGC = 'U';
-    memcpy(newNode->sbData, sbData, sizeof(sbData));//check syntax on this
+    memcpy(newNode->sbData, sbData, shDataSize);
 }
 
 
@@ -116,10 +123,27 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
 }
 
 void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult){
-    // need to look in the userdatafrom's sbdata list to find what I am lookin for and have it point to the userdatato. Hint gives offset to use I think
-    int i = 0;
-    for(; i < MAX_NODE_TYPE; i++){
-//        the attribute Name I am lookig for is in the nodes sbdata
+    //I have to search for attrName in pMgr meta-list.
+    //if the attrName doesnt exist then say so in pmmResult
+    //next check that the meta data for the attrName is a pointer.
+    //the attrName is in a meta list metaAttrM the details are in initMetadata()
+    //if the attrName is not a pointer then say so
+    //else cheange the pointer to point to the next user data or NULL.
+    //detail sheet has the code to make fromUserData point to toUserData
+
+
+
+    while(TRUE){
+        for(int i = 0; i < 10; i++){
+            if(strcmp(pMgr->metaAttrM[i].szAttrName, szAttrName) == 0){
+                MetaAttr *pAttr = &(pMgr->metaAttrM[i]);
+                if(pAttr->cDataType == 'P'){
+                    printf("herer I match\n");
+                }
+            }
+        }
     }
+
+
     printf("hello\n");
 }

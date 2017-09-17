@@ -126,7 +126,7 @@ typedef struct
 } HashMO;
 
 // student functions
-void * mmAllocate(StorageManager *pMgr
+void  *mmAllocate(StorageManager *pMgr
     , short shDataSize, short shNodeType, char sbData[], MMResult *pmmResult);
 void mmInit(StorageManager *pMgr);
 void mmMark(StorageManager *pMgr, MMResult *pmmResult);
@@ -134,8 +134,8 @@ void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult);
 void mmCollect(StorageManager *pMgr, MMResult *pmmResult);
 void mmAssoc(StorageManager *pMgr
     , void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult);
-void *addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
-        int wantSize, int newFreeNodeSize, short shDataSize, short shNodeType,
+void addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
+        short wantSize, short newFreeNodeSize, short shDataSize, short shNodeType,
          char sbData[]);
 
 // Driver functions
