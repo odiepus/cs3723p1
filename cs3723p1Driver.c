@@ -193,6 +193,9 @@ void initMetadata(StorageManager *pMgr)
     char *pLineItem = (char *)&lineItem;
     int iN = 0;
     // nodeTypeM contains metadata about each node type which will be copied to storage manager
+                    //this'll be the size of the newly created freenode if the left
+                    //over is large enuff for a free node
+                    int newFreeNodeSize = diff;
     NodeType nodeTypeM[MAX_NODE_TYPE] =
     {
         { "Customer", 0, sizeof(struct Customer) }
