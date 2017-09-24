@@ -111,6 +111,25 @@ void addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode
 
 
 void mmMark(StorageManager *pMgr, MMResult *pmmResult){
+    char *pCh;
+    short shTempSize;
+    InUseNode *pAlloc;
+    FreeNode *pFree;
+
+    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage;)
+    {
+        pAlloc = (InUseNode *)pCh;
+        shTempSize = pAlloc->shNodeSize;
+
+        // Change the output based on the cGC type
+        switch (pAlloc->cGC){
+        case 'F':
+        case 'U':
+            pAlloc->cGC = 'C';
+            printf("think it worked!!!!");
+            break;
+        }
+    }
 
 }
 
@@ -145,12 +164,14 @@ void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void 
                 }
                 else{
                     pmmResult->rc = RC_ASSOC_ATTR_NOT_PTR;
-                    pmmResult->szErrorMessage = "Atttribute not a pointer.";
+                    char errorMessage[]= "Atttribute not a pointer.";
+                    memcpy(pmmResult->szErrorMessage, errorMessage, sizeof(errorMessage));
                 }
             }
             else{
                 pmmResult->rc = RC_ASSOC_ATTR_NOT_FOUND;
-                pmmResult->szErrorMessage = "Atttribute not found.";
+                char errorMessage[]= "Atttribute not a found.";
+                memcpy(pmmResult->szErrorMessage, errorMessage, sizeof(errorMessage));
             }
         }
     }
