@@ -154,46 +154,43 @@ void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult){
 }
 
 void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
-    char *pCh, *pCh2;
-    short shTempSize;
-    InUseNode *pAlloc, *pAlloc2;
+    char *pCh, *p;
+    short size = 0;
+    InUseNode *pAlloc;
     FreeNode *pFree;
-    FreeNode *pFreeLast = NULL;
+    FreeNode *pHead = NULL;
 
     //travers the heap nodes and look for C's
     //if there are adjacent C nodes then combine. this node must point to last node if there is a last node that was free.
     //when the end of the heap is reached the last node is made the head of the free node list
-    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += shTempSize){
+    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += size){
         pAlloc = (InUseNode *)pCh;
-        shTempSize = pAlloc->shNodeSize;
-        pCh2 = pCh + shTempSize;
-        pAlloc2 = (InUseNode *)pCh2;
+        p = pCh;
+        size = pAlloc->shNodeSize;
 
         if(pAlloc->cGC == 'C'){
-            printf("removed %x", *pAlloc);
-
-            if(pFreeLast == NULL || pFreeLast->cGC != 'F'){
-                pFree = (FreeNode*)pCh;
-                if(pAlloc2->cGC == 'C'){
-                shTempSize = shTempSize + pAlloc2->shNodeSize;
-                pFree->shNodeSize = shTempSize;
-                }
-                pFree->cGC = 'F';
-                if(pFreeLast != NULL){
-                pFree->pFreeNext = pFreeLast;
-                }
-                pFreeLast = pFree;
-                pFree = NULL;
-            }
-            else if(pFreeLast->cGC == 'F'){
-                pFreeLast->shNodeSize += shTempSize;
-                pCh -= pFreeLast->shNodeSize;
-                shTempSize = pFreeLast->shNodeSize;
-                pFree = NULL;
-            }
+            pFree = (FreeNode*)pCh;
+            pFree->cGC = 'F';
+            pFree->shNodeSize = combine(p, pAlloc, size);
+            pFree->pFreeNext = pHead;
+            pHead = pFree;
+            size = pHead->shNodeSize;
         }
+
     }
-    pMgr->pFreeHead = pFreeLast;
+    pMgr->pFreeHead = pHead;
+}
+
+short combine(char *p, InUseNode *pAlloc, short size){
+    char *nextNode = p + pAlloc->shNodeSize;
+    InUseNode *nextInUseNode = (InUseNode*)nextNode;
+    if(nextInUseNode->cGC != 'C'){
+        return size;
+    }
+    else if(nextInUseNode->cGC == 'C'){
+        size += combine(nextNode, nextInUseNode, nextInUseNode->shNodeSize);
+        return size;
+    }
 }
 
 void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult){
