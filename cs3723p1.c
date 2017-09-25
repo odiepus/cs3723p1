@@ -172,22 +172,24 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
         if(pAlloc->cGC == 'C'){
             printf("removed %x", *pAlloc);
 
-            if(pFreeLast->cGC != 'C'){
-            pFree = (FreeNode*)pCh;
-            if(pAlloc2->cGC == 'C'){
+            if(pFreeLast == NULL || pFreeLast->cGC != 'F'){
+                pFree = (FreeNode*)pCh;
+                if(pAlloc2->cGC == 'C'){
                 shTempSize = shTempSize + pAlloc2->shNodeSize;
                 pFree->shNodeSize = shTempSize;
-            }
-            pFree->cGC = 'F';
-            if(pFreeLast != NULL){
+                }
+                pFree->cGC = 'F';
+                if(pFreeLast != NULL){
                 pFree->pFreeNext = pFreeLast;
+                }
+                pFreeLast = pFree;
+                pFree = NULL;
             }
-            pFreeLast = pFree;
-            pFree = NULL;
-            }
-            else if(pFreeLast->cGC == 'C'){
+            else if(pFreeLast->cGC == 'F'){
                 pFreeLast->shNodeSize += shTempSize;
                 pCh -= pFreeLast->shNodeSize;
+                shTempSize = pFreeLast->shNodeSize;
+                pFree = NULL;
             }
         }
     }
