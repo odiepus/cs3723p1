@@ -24,8 +24,8 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
     short minNodeSize = pMgr->iMinimumNodeSize;
 
     if(tempHead == NULL){
-                pmmResult->rc = RC_NOT_AVAIL;
-                strcpy(pmmResult->szErrorMessage, "There are no FreeNode's available\n");
+        pmmResult->rc = RC_NOT_AVAIL;
+        strcpy(pmmResult->szErrorMessage, "There are no FreeNode's available\n");
     }
 
     //if there is only one node or head node is large enuff
@@ -36,12 +36,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 
         //if diff is larger than minNodeSize then carve out the freenode and assign freenode head to it
         //and InUseNode to new carved out space
-        if(diff >= minNodeSize){
-            addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
-        }
-        else{
-            addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
-        }
+        addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
     }
     //if head node size is less then traverse the linked list of freenodes and
     //find one that fits
@@ -58,12 +53,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 
                     //if the leftover is larger enuff for a free node then create
                     //a new freenode and InUseNode
-                    if(diff >= minNodeSize){
-                        addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
-                    }
-                    else{
-                        addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
-                    }
+                    addNewNodeAndOrFreeNode(pMgr, tempHead, newNode, wantSize, diff, shDataSize, shNodeType,  sbData);
                 }
             }
             //if the next node is null then we return the bad news via the pointer provided
@@ -80,8 +70,8 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 }
 
 void addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode *newNode,
-        short wantSize, short newFreeNodeSize, short shDataSize, short shNodeType,
-        char sbData[]){
+                             short wantSize, short newFreeNodeSize, short shDataSize, short shNodeType,
+                             char sbData[]){
 
     if(newFreeNodeSize >= pMgr->iMinimumNodeSize){
         void *endtemp = (void*) ((char*)tempHead + wantSize); //point tempHead to the top of leftover of freenode
@@ -91,7 +81,12 @@ void addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode
         }
         else{
             FreeNode *temp = (FreeNode*)((char*)tempHead + wantSize);
-            temp->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
+            if(temp->pFreeNext != NULL){
+                temp->pFreeNext = pMgr->pFreeHead->pFreeNext; //point new freenode to the next freenode in the linklist of freenodes
+            }
+            else{
+                temp->pFreeNext = NULL;
+            }
             //setup metadata for new freenode
             temp->shNodeSize = newFreeNodeSize;
             temp->cGC = 'F';
@@ -100,6 +95,14 @@ void addNewNodeAndOrFreeNode(StorageManager *pMgr, FreeNode *tempHead, InUseNode
     }
     else if(tempHead->pFreeNext != NULL){
         pMgr->pFreeHead = tempHead->pFreeNext;
+    }
+    //new free node size we have is too small and the next node is null; basically we at end of heap
+    else{
+        newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize + newFreeNodeSize;
+        newNode->shNodeType = shNodeType;
+        newNode->cGC = 'U';
+        memcpy(newNode->sbData, sbData, shDataSize);
+        return;
     }
 
     //setup metadata for new node
@@ -116,7 +119,7 @@ void mmMark(StorageManager *pMgr, MMResult *pmmResult){
     InUseNode *pAlloc;
     FreeNode *pFree;
 
-    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage;)
+    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += shTempSize)
     {
         pAlloc = (InUseNode *)pCh;
         shTempSize = pAlloc->shNodeSize;
@@ -134,10 +137,83 @@ void mmMark(StorageManager *pMgr, MMResult *pmmResult){
 }
 
 void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult){
+    InUseNode *pData = (InUseNode*)((char*)pUserData - NODE_OVERHEAD_SZ);
+    void **ppNode;
+    if(pData == NULL || pData->cGC ==  'U'){
+        return;
+    }
 
+    if(pData->cGC =='C') {
+        pData->cGC = 'U';
+
+        if(pData->shNodeType == 0){
+            for(int i = 0; i < 10; i++){
+                if(strcmp(pMgr->metaAttrM[i].szAttrName, "pNextCust") == 0){
+                    MetaAttr *pAttr = &(pMgr->metaAttrM[i]);
+                    ppNode = (void**)&(pData->sbData[pAttr->shOffset]);
+                    if(*ppNode == NULL){
+                        return;
+                    }
+                    i = 10;
+                }
+            }
+        }
+        else if(pData->shNodeType == 1){
+            for(int i = 0; i < 10; i++){
+                if(strcmp(pMgr->metaAttrM[i].szAttrName, "pNextItem") == 0){
+                    MetaAttr *pAttr = &(pMgr->metaAttrM[i]);
+                    ppNode = (void**)&(pData->sbData[pAttr->shOffset]);
+                    if(*ppNode == NULL){
+                        return;
+                    }
+                    i = 10;
+                }
+            }
+        }
+        mmFollow(pMgr, *ppNode, pmmResult);
+    }
 }
 
 void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
+    char *pCh, *pCh2;
+    short shTempSize;
+    InUseNode *pAlloc, *pAlloc2;
+    FreeNode *pFree;
+    FreeNode *pFreeNxt;
+
+    //travers the heap nodes and look for C's
+    //if there are adjacent C nodes then combine. this node must point to last node if there is a last node that was free.
+    //when the end of the heap is reached the last node is made the head of the free node list
+    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += shTempSize){
+        pAlloc = (InUseNode *)pCh;
+        shTempSize = pAlloc->shNodeSize;
+        pCh2 = pCh + shTempSize;
+        pAlloc2 = (InUseNode *)pCh2;
+
+        //if adjacent node is C then combine into one node
+        if(pAlloc2->cGC == 'C')
+        {
+
+        }
+        //else if next node isnt C then turn this node into a freenode.
+
+        else{
+            switch (pAlloc->cGC) {
+            case 'C':
+                pFree = (FreeNode*)&pAlloc;
+                if(pMgr->pBeginStorage == (char*)pFree){
+                    pMgr->pFreeHead = pFree;
+                }
+                pFree->cGC = 'F';
+                pFree->pFreeNext = NULL;
+                pFree = pFree->pFreeNext;
+                break;
+            default:
+                break;
+            }
+
+        }
+    }
 
 }
 
