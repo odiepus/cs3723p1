@@ -3,6 +3,16 @@
 #include <stdlib.h>
 #include "cs3723p1.h"
 
+/***************************mmInit****************************************
+void mmInit(StorageManager *pMgr);
+Purpose:
+    Initializes the first free node. The StorageManager head free node
+    pointer points to it. The meta data for the free node is initialized
+    well.
+Parameters:
+I StorageManager *pMgr      Container with meta info used to access heap
+Notes:
+**************************************************************************/
 
 void mmInit(StorageManager *pMgr){
     pMgr->pFreeHead = (FreeNode*) pMgr->pBeginStorage;
@@ -14,20 +24,40 @@ void mmInit(StorageManager *pMgr){
 
 }
 
+/***************************mmAllocate****************************************
+void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char sbData[], MMResult *pmmResult);
+Purpose:
+    Allocate node from free space list. Search for a node that fits. If a free node
+    has excess space and space is larger than minimum node size then a new free node
+    is created and added to top of free node list
+Parameters:
+    I StorageManager *pMgr      Container with meta info used to access heap
+    I short shDataSize          Size of data pass in
+    I short shNodeType          identifies node type
+    I char sbData[]             array containing data for the node
+    I MMResult *pmmResult       container to pass cause of errors
+Notes:
+    2 pointers are used to traverse the linked list and find a node
+    of suitable size. if node has enough leftover then a free node
+    is created and placed at the top of the free node list
+
+Return value:
+    pointer to sbData within the node
+**************************************************************************/
+
 void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char sbData[], MMResult *pmmResult){
-    //points to top of freenode list
-    FreeNode *temp1 = pMgr->pFreeHead;
+    FreeNode *temp1 = pMgr->pFreeHead;                  //points to top of freenode list
     FreeNode *temp2 = pMgr->pFreeHead->pFreeNext;
-    InUseNode *newNode = (InUseNode*)temp1;                 //point newNode to the top of freenode pointer we are pointing at currently
+    InUseNode *newNode = (InUseNode*)temp1;             //point newNode to the top of freenode pointer we are pointing at currently
     FreeNode *temp;
 
     short wantSize = shDataSize + NODE_OVERHEAD_SZ;
     short minNodeSize = pMgr->iMinimumNodeSize;
 
-    if(temp1->shNodeSize >= wantSize){
+    if(temp1->shNodeSize >= wantSize){                  //In this if statement we create freenode and a allocate Inuse node
         int diff = temp1->shNodeSize - wantSize;
 
-        if(diff >= minNodeSize){
+        if(diff >= minNodeSize){                        //if there is enough leftover for a free node then we create one
             temp = (FreeNode*)((char*)temp1 + wantSize);
             if(temp2 != NULL){
                 temp->pFreeNext = temp2;
@@ -38,25 +68,25 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 
             newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
         }
-        else{
+        else{                                           //if there isnt enought leftover for a free node then Inuse node uses the whole thing
             pMgr->pFreeHead = pMgr->pFreeHead->pFreeNext;
             newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize + diff;
         }
 
-        newNode->shNodeType = shNodeType;
+        newNode->shNodeType = shNodeType;               //setup metadata for new node
         newNode->cGC = 'U';
         memcpy(newNode->sbData, sbData, shDataSize);
 
-        return (void*)newNode->sbData;
+        return (void*)newNode->sbData;                  //return pointer to the shData within the container
     }
 
     while(temp2 != NULL){
-        newNode = (InUseNode*)temp2;                 //point newNode to the top of freenode pointer we are pointing at currently
-        if( (char*)temp2 < pMgr->pEndStorage){
-            if(temp2->shNodeSize >= wantSize){
+        newNode = (InUseNode*)temp2;                    //point newNode to the top of freenode pointer we are pointing at currently
+        if( (char*)temp2 < pMgr->pEndStorage){          //make sure the temp2 node is within heap
+            if(temp2->shNodeSize >= wantSize){          //if the freenode is large enough for our new node then we use it if leftover is large enough then create new free node
                 int diff = temp2->shNodeSize - wantSize;
 
-                if(diff >= minNodeSize){
+                if(diff >= minNodeSize){                //if leftover is large enough then create new free node
                     temp = (FreeNode*)((char*)temp2 + wantSize);
                     temp->pFreeNext = pMgr->pFreeHead;
                     temp1->pFreeNext = temp2->pFreeNext;
@@ -84,7 +114,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
             break;
         }
     }
-    if ((char*)temp2 > pMgr->pEndStorage){
+    if ((char*)temp2 > pMgr->pEndStorage){              //if no suitable node is found then notify the user
         pmmResult->rc = RC_NOT_AVAIL;
         memcpy(pmmResult->szErrorMessage,"Specified object size not available in Free Memory list\n", sizeof(pmmResult->szErrorMessage));
     }
@@ -92,12 +122,24 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
 
 
 
+/***************************mmMark****************************************
+void mmMark(StorageManager *pMgr, MMResult *pmmResult);
+Purpose:
+    function marks every node in the heap with a 'C'
+Parameters:
+    I StorageManager *pMgr      Container with meta info used to access heap
+    I MMResult *pmmResult       Container used to store error messages
+Notes:
+    iterate through the heap using each node size as the size to iterate to
+**************************************************************************/
+
 void mmMark(StorageManager *pMgr, MMResult *pmmResult){
     char *pCh;
     short shTempSize;
     InUseNode *pAlloc;
 
-    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += shTempSize)
+    //following logic is attributed to Professor Clark UTSA. Inspiration taken from cs3723p1Driver.c
+    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += shTempSize)         //iterate node by node through the heap and mark each with 'C'
     {
         pAlloc = (InUseNode *)pCh;
         shTempSize = pAlloc->shNodeSize;
@@ -108,12 +150,24 @@ void mmMark(StorageManager *pMgr, MMResult *pmmResult){
         case 'U':
         case 'C':
             pAlloc->cGC = 'C';
-            printf("think it worked!!!!");
             break;
         }
     }
 
 }
+
+/***************************mmFollow****************************************
+void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult);
+Purpose: traverse list and mark nodes still in use with 'U'
+Parameters:
+    I StorageManager *pMgr      Container with meta info used to access heap
+    I void *pUserData           Pointer to User node cGC
+    I MMResult *pmmResult       Container used to store error messages
+Notes:
+    based on passed in user data nodes that are traversed are marked as used.
+    based on the node type different attribute names are used to search
+    for the offset
+**************************************************************************/
 
 void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult){
     InUseNode *pData = (InUseNode*)((char*)pUserData - NODE_OVERHEAD_SZ);
@@ -122,11 +176,13 @@ void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult){
         return;
     }
 
-    if(pData->cGC =='C') {
+
+    //following logic is attributed to Professor Clark UTSA. Inspiration taken from cs3723p1Driver.c
+    if(pData->cGC =='C') {                                              //given data from a pointer check if 'C' and change to 'U'
         pData->cGC = 'U';
 
         if(pData->shNodeType == 0){
-            for(int i = 0; i < 10; i++){
+            for(int i = 0; i < 10; i++){                                //then check if current node is linked to another node
                 if(strcmp(pMgr->metaAttrM[i].szAttrName, "pNextCust") == 0){
                     MetaAttr *pAttr = &(pMgr->metaAttrM[i]);
                     ppNode = (void**)&(pData->sbData[pAttr->shOffset]);
@@ -153,6 +209,20 @@ void mmFollow(StorageManager *pMgr, void *pUserData, MMResult *pmmResult){
     }
 }
 
+/***************************mmCollect****************************************
+void mmCollect(StorageManager *pMgr, MMResult *pmmResult);
+Purpose:
+    Function collects all nodes that still have the cGC of 'C' and sets
+    them up as free nodes. Creates a linked list out of the free nodes
+Parameters:
+    I StorageManager *pMgr      Container used to store meta data for use in pointer arithemitic
+    I MMResult *pmmResult       Container used to store error messages
+Notes:
+    single pointer is used to look at each node and a helper function is
+    used to search the next sequence of nodes to look for more 'C' nodes to
+    add to the currently found 'C' node
+**************************************************************************/
+
 void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
     char *pCh, *p;
     short size = 0;
@@ -160,10 +230,8 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
     FreeNode *pFree;
     FreeNode *pHead = NULL;
 
-    //travers the heap nodes and look for C's
-    //if there are adjacent C nodes then combine. this node must point to last node if there is a last node that was free.
-    //when the end of the heap is reached the last node is made the head of the free node list
-    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += size){
+    //following logic is attributed to Professor Clark UTSA. Inspiration taken from cs3723p1Driver.c
+    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += size){      //iterate through each node in heap and collect nodes with 'C'
         pAlloc = (InUseNode *)pCh;
         p = pCh;
         size = pAlloc->shNodeSize;
@@ -178,8 +246,23 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
         }
 
     }
-    pMgr->pFreeHead = pHead;
+    pMgr->pFreeHead = pHead;                                                    //point StorageManager container FreeNode pointer to top of newly create linked list
 }
+
+/***************************combine****************************************
+short combine(char *p, InUseNode *pAlloc, short size);
+Purpose:
+    Helper function used to search adjacent nodes for 'C' nodes
+    that can be combined to the initial 'C' node found
+    The sequence is searched recursively until no more 'C' nodes are
+    found.
+Parameters:
+    I   char *p           passed pointer of last found 'C' node
+    I   InUseNode *pAlloc passed in node of last found 'C' node
+    I/O short size        passed in size of last found 'C' node
+Return value:
+    return the combined size of all 'C' nodes
+**************************************************************************/
 
 short combine(char *p, InUseNode *pAlloc, short size){
     char *nextNode = p + pAlloc->shNodeSize;
@@ -193,16 +276,26 @@ short combine(char *p, InUseNode *pAlloc, short size){
     }
 }
 
+/***************************mmAssoc****************************************
 void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult){
-    //I have to search for attrName in pMgr meta-list.
-    //if the attrName doesnt exist then say so in pmmResult
-    //next check that the meta data for the attrName is a pointer.
-    //the attrName is in a meta list metaAttrM the details are in initMetadata()
-    //if the attrName is not a pointer then say so
-    //else cheange the pointer to point to the next user data or NULL.
-    //detail sheet has the code to make fromUserData point to toUserData
+Purpose:
+    creates a linked list between specified nodes
+Parameters:
+    I StorageManager *pMgr
+    I void *pUserDataFrom
+    I char szAttrName[]
+    I void *pUserDataTo
+    I MMResult *pmmResult
+Notes:
+    using the meta data list in the StorageManager container the attribute is searched for
+    and used to obtain offset for the pointers that are used to point to other nodes
+**************************************************************************/
+
+void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void *pUserDataTo, MMResult *pmmResult){
     void **ppNode;
     InUseNode *pUserNodeFrom;
+
+    //following logic is attributed to Professor Clark UTSA. Inspiration taken from cs3723p1Driver.c
     for(int i = 0; i < 10; i++){
         if(strcmp(pMgr->metaAttrM[i].szAttrName, szAttrName) == 0){
             MetaAttr *pAttr = &(pMgr->metaAttrM[i]);
@@ -212,7 +305,6 @@ void mmAssoc(StorageManager *pMgr, void *pUserDataFrom, char szAttrName[], void 
                 *ppNode = pUserDataTo;
                 pmmResult->rc = 0;
                 i = 10;
-                printf("herer I match\n");
             }
             else{
                 pmmResult->rc = RC_ASSOC_ATTR_NOT_PTR;

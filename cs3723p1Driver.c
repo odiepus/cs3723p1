@@ -718,7 +718,6 @@ void garbageCollection(StorageManager *pMgr, MMResult *pmmResult)
             , pmmResult->szErrorMessage);
         return;
     }
-    smDump(pMgr);
 
     // To get the references, we need the contents of the hash table.
     // In most GC solutions, we would get the entries from either the
@@ -741,7 +740,6 @@ void garbageCollection(StorageManager *pMgr, MMResult *pmmResult)
             }
         }
     }
-    smDump(pMgr);
     // Collect all the candidate entries as free.
     mmCollect(pMgr, pmmResult);
     if (pmmResult->rc != 0)
