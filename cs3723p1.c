@@ -1,3 +1,17 @@
+/**********************************************************************
+  cs3723p1.c  by Hector Herrera
+Purpose:
+    Simulate garbage collection of nodes in a heap
+Input:
+    Commands used to created, associate and collect InUseNodes and FreeNode's
+    ALLOC, ASSOC, GCOLL
+Results:
+    A heap stucture that has every byte accounted for either as an InUseNode or
+    a FreeNode.
+**********************************************************************/
+
+
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -55,22 +69,22 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
     short minNodeSize = pMgr->iMinimumNodeSize;
 
     if(temp1->shNodeSize >= wantSize){                  //In this if statement we create freenode and a allocate Inuse node
-        int diff = temp1->shNodeSize - wantSize;
+        int iDiff = temp1->shNodeSize - wantSize;
 
-        if(diff >= minNodeSize){                        //if there is enough leftover for a free node then we create one
+        if(iDiff >= minNodeSize){                        //if there is enough leftover for a free node then we create one
             temp = (FreeNode*)((char*)temp1 + wantSize);
             if(temp2 != NULL){
                 temp->pFreeNext = temp2;
             }
             temp->cGC = 'F';
-            temp->shNodeSize = diff;
+            temp->shNodeSize = iDiff;
             pMgr->pFreeHead = temp;
 
             newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize;
         }
         else{                                           //if there isnt enought leftover for a free node then Inuse node uses the whole thing
             pMgr->pFreeHead = pMgr->pFreeHead->pFreeNext;
-            newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize + diff;
+            newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize + iDiff;
         }
 
         newNode->shNodeType = shNodeType;               //setup metadata for new node
@@ -84,9 +98,9 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
         newNode = (InUseNode*)temp2;                    //point newNode to the top of freenode pointer we are pointing at currently
         if( (char*)temp2 < pMgr->pEndStorage){          //make sure the temp2 node is within heap
             if(temp2->shNodeSize >= wantSize){          //if the freenode is large enough for our new node then we use it if leftover is large enough then create new free node
-                int diff = temp2->shNodeSize - wantSize;
+                int iDiff = temp2->shNodeSize - wantSize;
 
-                if(diff >= minNodeSize){                //if leftover is large enough then create new free node
+                if(iDiff >= minNodeSize){                //if leftover is large enough then create new free node
                     temp = (FreeNode*)((char*)temp2 + wantSize);
                     temp->pFreeNext = pMgr->pFreeHead;
                     temp1->pFreeNext = temp2->pFreeNext;
@@ -97,7 +111,7 @@ void *mmAllocate(StorageManager *pMgr, short shDataSize, short shNodeType, char 
                 }
                 else{
                     temp1->pFreeNext = temp2->pFreeNext;
-                    newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize + diff;
+                    newNode->shNodeSize = NODE_OVERHEAD_SZ + shDataSize + iDiff;
                 }
 
                 newNode->shNodeType = shNodeType;
@@ -225,24 +239,24 @@ Notes:
 
 void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
     char *pCh, *p;
-    short size = 0;
+    short shSize = 0;
     InUseNode *pAlloc;
     FreeNode *pFree;
     FreeNode *pHead = NULL;
 
     //following logic is attributed to Professor Clark UTSA. Inspiration taken from cs3723p1Driver.c
-    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += size){      //iterate through each node in heap and collect nodes with 'C'
+    for (pCh = pMgr->pBeginStorage; pCh < pMgr->pEndStorage; pCh += shSize){      //iterate through each node in heap and collect nodes with 'C'
         pAlloc = (InUseNode *)pCh;
         p = pCh;
-        size = pAlloc->shNodeSize;
+        shSize = pAlloc->shNodeSize;
 
         if(pAlloc->cGC == 'C'){
             pFree = (FreeNode*)pCh;
             pFree->cGC = 'F';
-            pFree->shNodeSize = combine(p, pAlloc, size);
+            pFree->shNodeSize = combine(p, pAlloc, shSize);
             pFree->pFreeNext = pHead;
             pHead = pFree;
-            size = pHead->shNodeSize;
+            shSize = pHead->shNodeSize;
         }
 
     }
@@ -250,7 +264,7 @@ void mmCollect(StorageManager *pMgr, MMResult *pmmResult){
 }
 
 /***************************combine****************************************
-short combine(char *p, InUseNode *pAlloc, short size);
+short combine(char *p, InUseNode *pAlloc, short shSize);
 Purpose:
     Helper function used to search adjacent nodes for 'C' nodes
     that can be combined to the initial 'C' node found
@@ -259,20 +273,20 @@ Purpose:
 Parameters:
     I   char *p           passed pointer of last found 'C' node
     I   InUseNode *pAlloc passed in node of last found 'C' node
-    I/O short size        passed in size of last found 'C' node
+    I/O short shSize        passed in size of last found 'C' node
 Return value:
     return the combined size of all 'C' nodes
 **************************************************************************/
 
-short combine(char *p, InUseNode *pAlloc, short size){
+short combine(char *p, InUseNode *pAlloc, short shSize){
     char *nextNode = p + pAlloc->shNodeSize;
     InUseNode *nextInUseNode = (InUseNode*)nextNode;
     if(nextInUseNode->cGC != 'C'){
-        return size;
+        return shSize;
     }
     else if(nextInUseNode->cGC == 'C'){
-        size += combine(nextNode, nextInUseNode, nextInUseNode->shNodeSize);
-        return size;
+        shSize += combine(nextNode, nextInUseNode, nextInUseNode->shNodeSize);
+        return shSize;
     }
 }
 
